@@ -1,0 +1,6 @@
+[plugin]
+name = "dokku-phantomjs"
+description = "Install phantomJS into dokku container"
+version = "0.0.1"
+website_url = "https://github.com/rosdyana/dokku-phantomjs"
+[plugin.config]

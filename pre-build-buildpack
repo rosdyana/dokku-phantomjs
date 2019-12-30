@@ -1,0 +1,42 @@
+#!/usr/bin/env bash
+
+set -eo pipefail; [[ $DOKKU_TRACE ]] && set -x
+
+APP="$1"; IMAGE="dokku/$APP"
+echo "-----> Preparing to install phantomJS ..."
+
+DIR=/app
+PHANTOM_JS_VERSION_FILE="phantomjs-version"
+COMMAND=$(cat <<EOF
+export DEBIAN_FRONTEND=noninteractive
+
+echo "-----> Reading phantomJS version from \$PHANTOM_JS_VERSION_FILE ..."
+if [ -f $DIR/$PHANTOM_JS_VERSION_FILE ]; then
+    PHANTOM_JS_VERSION=\$(cat $DIR/$PHANTOM_JS_VERSION_FILE)
+    apt-get update
+    apt-get install build-essential chrpath libssl-dev libxft-dev -y
+    apt-get install libfreetype6 libfreetype6-dev -y
+    apt-get install libfontconfig1 libfontconfig1-dev -y
+    PHANTOM_JS="phantomjs-2.1.1-linux-x86_64"
+    SOURCE_URL="https://bitbucket.org/ariya/phantomjs/downloads/\$PHANTOM_JS.tar.bz2"
+    echo "-----> Downloading phantomJS ..."
+    wget --quiet \$SOURCE_URL
+    echo "-----> Download complete ..."
+    echo "-----> Extracting \$PHANTOM_JS ..."
+    tar xjf \$PHANTOM_JS.tar.bz2
+    mv \$PHANTOM_JS /usr/local/share
+    echo "-----> Creating symbolic link ..."
+    ln -sf /usr/local/share/\$PHANTOM_JS/bin/phantomjs /usr/local/bin
+    echo -ne "-----> phantomJS installed version : "
+    phantomjs --version
+else
+    echo "\$PHANTOM_JS_VERSION_FILE not found, please create \$PHANTOM_JS_VERSION_FILE in your root source directory ..."
+fi
+sleep 1 # wait so that docker run has not exited before docker attach
+EOF
+)
+id=$(docker run -d $IMAGE /bin/bash -e -c "$COMMAND")
+#enable logs
+docker attach $id
+test $(docker wait $id) -eq 0
+docker commit $id $IMAGE > /dev/null
